@@ -4,59 +4,37 @@ import java.util.List;
 public class Parser {
     private final Scanner scanner;
     private Token currentToken;
-    private final List<String> errors = new ArrayList<>(); // <-- LISTA PARA RECOPILAR TODOS LOS ERRORES
+    private final List<String> errors = new ArrayList<>(); 
+    // NUEVO: Buffer para almacenar la traza de derivación (el "árbol").
+    private final List<String> derivationTrace = new ArrayList<>();
 
     public Parser(Scanner scanner) {
         this.scanner = scanner;
     }
     
-    // --- Manejo de Errores y Recuperación (Modo Pánico) ---
-    
+    // --- Lógica de Derivación, Consumo y Errores ---
+
     private void error(String message) {
-        String errorMessage = String.format("❌ Error de Sintaxis en línea %d (%s): %s", 
+        // Registra el error pero no suprime la lógica del parser para avanzar.
+        String errorMessage = String.format("Error de Sintaxis en línea %d (%s): %s", 
                                             currentToken.linea, currentToken.lexema, message);
         errors.add(errorMessage); 
         System.err.println(errorMessage);
     }
-    
-    private void synchronize(Token.Tipo expectedType) {
-        // Tokens que sirven como puntos seguros para reanudar.
-        Token.Tipo[] synchronizationSet = {
-            Token.Tipo.SEMICOLON, Token.Tipo.R_BRACE, Token.Tipo.EOF,
-            Token.Tipo.IF, Token.Tipo.WHILE, Token.Tipo.INPUT, Token.Tipo.OUTPUT,
-            Token.Tipo.INT, Token.Tipo.FLOAT // Para sincronizar declaraciones
-        };
-        
-        while (currentToken.tipo != Token.Tipo.EOF) {
-            // Si el token actual es uno de sincronización, salimos.
-            for (Token.Tipo tipo : synchronizationSet) {
-                if (currentToken.tipo == tipo) {
-                    return; 
-                }
-            }
-            // Saltamos el token inválido
-            currentToken = scanner.nextToken(); 
-        }
-    }
 
+    private void printProduction(String rule) {
+        // Almacena la regla en el buffer en lugar de imprimirla inmediatamente.
+        derivationTrace.add("--> APLICANDO REGLA: " + rule);
+    }
+    
     private void match(Token.Tipo expectedType) {
-        if (currentToken.tipo == Token.Tipo.ERROR) {
-             errors.add("❌ Error Léxico detectado. Se cancela el análisis.");
-             return;
-        }
-        
-        if (currentToken.tipo.equals(expectedType)) {
+        if (currentToken.tipo == expectedType) {
+            // Almacena el consumo en el buffer.
+            derivationTrace.add("    |-> Consumido Token Terminal: " + currentToken.lexema + " (" + expectedType + ")");
             currentToken = scanner.nextToken();
         } else {
             error("Se esperaba '" + expectedType + "' pero se encontró '" + currentToken.tipo + "'");
-            
-            // Lógica de Recuperación:
-            synchronize(expectedType);
-            
-            // Consumir el token si el salto nos llevó al lugar correcto.
-            if (currentToken.tipo.equals(expectedType)) {
-                 currentToken = scanner.nextToken();
-            }
+            // Nota: Aquí se detiene la ejecución sin recuperación simple si hay un error
         }
     }
     
@@ -66,32 +44,38 @@ public class Parser {
         currentToken = scanner.nextToken(); 
         ASTNode root = P();
 
+        // CLAVE: Control estricto para la generación de la salida.
         if (!errors.isEmpty()) {
-            System.out.println("\n⚠️ ANÁLISIS FINALIZADO CON ERRORES. EL ÁRBOL NO SERÁ GENERADO.");
+            // Si hay errores, solo se muestra el reporte final, NUNCA la traza.
+            System.out.println("\n--- ANÁLISIS FINALIZADO CON ERRORES. EL ÁRBOL SINTÁCTICO NO SE MUESTRA. ---");
             System.out.println("TOTAL DE ERRORES SINTÁCTICOS Y LÉXICOS ENCONTRADOS: " + errors.size());
-            return null; // <-- NO DEVUELVE EL AST
+            return null; 
         } else if (currentToken.tipo.equals(Token.Tipo.EOF)) {
-            System.out.println("\n✅ Análisis sintáctico completado con éxito.");
-        } else {
-            error("Error: Código extra después del fin del programa.");
-            return null;
-        }
+            // Si es correcto, primero se imprime el nuevo "árbol sintáctico" (la traza).
+            System.out.println("\n--- ÁRBOL SINTÁCTICO (Análisis de Derivación) ---");
+            for (String line : derivationTrace) {
+                System.out.println(line);
+            }
+            System.out.println("\n--- Análisis completado con éxito. ---");
+        } 
         return root;
     }
     
-    // P -> D S <eof> [cite: 8]
+    // P -> D S <eof>
     private ASTNode P() {
-        ASTNode pNode = new ASTNode("Program");
+        printProduction("P -> D S <eof>");
+        ASTNode pNode = new ASTNode("P");
         pNode.children.add(D());
         pNode.children.add(S());
         match(Token.Tipo.EOF);
         return pNode;
     }
 
-    // D -> (int | float) id ; D | ℇ [cite: 9, 10]
+    // D -> (int | float) id ; D | ℇ
     private ASTNode D() {
         if (currentToken.tipo == Token.Tipo.INT || currentToken.tipo == Token.Tipo.FLOAT) {
-            ASTNode dNode = new ASTNode("Declaration");
+            printProduction("D -> (int | float) id ; D");
+            ASTNode dNode = new ASTNode("D");
             dNode.children.add(new ASTNode("Type", currentToken.lexema));
             match(currentToken.tipo); 
             dNode.children.add(new ASTNode("Id", currentToken.lexema));
@@ -100,108 +84,102 @@ public class Parser {
             dNode.children.add(D()); 
             return dNode;
         } else {
-            return new ASTNode("EmptyDeclaration"); // Regla ℇ
+            printProduction("D -> ℇ");
+            return new ASTNode("EmptyD");
         }
     }
 
-    // S -> if E then S else S | while E do S | { S L | input E | output E [cite: 11-15]
+    // S -> if E then S else S | while E do S | { S L | input E | output E
     private ASTNode S() {
-        ASTNode sNode; 
-        
+        ASTNode sNode = new ASTNode("S");
         switch (currentToken.tipo) {
             case IF:
-                sNode = new ASTNode("IfStatement"); 
+                printProduction("S -> if E then S else S");
                 match(Token.Tipo.IF);
                 sNode.children.add(E()); 
                 match(Token.Tipo.THEN);
                 sNode.children.add(S()); 
-                match(Token.Tipo.ELSE); // ELSE obligatorio por gramática
+                match(Token.Tipo.ELSE);
                 sNode.children.add(S()); 
                 break;
             case WHILE:
-                sNode = new ASTNode("WhileStatement"); 
+                printProduction("S -> while E do S");
                 match(Token.Tipo.WHILE);
                 sNode.children.add(E()); 
                 match(Token.Tipo.DO);
                 sNode.children.add(S()); 
                 break;
             case L_BRACE:
-                sNode = new ASTNode("BlockStatement"); 
+                printProduction("S -> { S L");
                 match(Token.Tipo.L_BRACE);
                 sNode.children.add(S()); 
                 sNode.children.add(L()); 
                 break;
             case INPUT:
-                sNode = new ASTNode("InputStatement"); 
+                printProduction("S -> input E");
                 match(Token.Tipo.INPUT);
-                sNode.children.add(E());
-                // NO hay SEMICOLON aquí, debe ser consumido por L() 
+                sNode.children.add(E()); 
                 break;
             case OUTPUT:
-                sNode = new ASTNode("OutputStatement"); 
+                printProduction("S -> output E");
                 match(Token.Tipo.OUTPUT);
                 sNode.children.add(E()); 
-                // NO hay SEMICOLON aquí, debe ser consumido por L()
                 break;
             default:
-                error("Sentencia inválida. Se esperaba IF, WHILE, '{', INPUT, u OUTPUT.");
-                synchronize(null); 
-                return new ASTNode("ErrorStatement");
+                error("Sentencia S inválida. Se esperaba IF, WHILE, '{', INPUT, u OUTPUT.");
+                return new ASTNode("ErrorS");
         }
         return sNode;
     }
 
-    // L -> } | ; S L [cite: 16, 17]
+    // L -> } | ; S L
     private ASTNode L() {
         if (currentToken.tipo == Token.Tipo.R_BRACE) {
+            printProduction("L -> }");
             match(Token.Tipo.R_BRACE);
-            return new ASTNode("EndBlock");
+            return new ASTNode("EndL");
         } else if (currentToken.tipo == Token.Tipo.SEMICOLON) {
-            ASTNode lNode = new ASTNode("StatementList");
+            printProduction("L -> ; S L");
+            ASTNode lNode = new ASTNode("L");
             match(Token.Tipo.SEMICOLON);
             lNode.children.add(S());
             lNode.children.add(L());
             return lNode;
         } else {
-             error("Se esperaba SEMICOLON (;) o '}' dentro del bloque de sentencias.");
-             synchronize(Token.Tipo.R_BRACE); 
-             if (currentToken.tipo == Token.Tipo.R_BRACE) {
-                 return L();
-             }
-             return new ASTNode("ErrorList");
+             error("Se esperaba ; o } en la lista L. Encontrado: " + currentToken.tipo);
+             return new ASTNode("ErrorL");
         }
     }
     
-    // E -> num == num | id == id | num | id [cite: 18-21]
+    // E -> num == num | id == id | num | id
     private ASTNode E() {
-        ASTNode eNode = new ASTNode("Expression");
+        ASTNode eNode = new ASTNode("E");
+        
         if (currentToken.tipo == Token.Tipo.NUM) {
-            eNode.children.add(new ASTNode("Num", currentToken.lexema));
             match(Token.Tipo.NUM);
-            eNode.children.add(E_prime(Token.Tipo.NUM));
+            eNode.children.add(E_prime("NUM"));
         } else if (currentToken.tipo == Token.Tipo.ID) {
-            eNode.children.add(new ASTNode("Id", currentToken.lexema));
             match(Token.Tipo.ID);
-            eNode.children.add(E_prime(Token.Tipo.ID));
+            eNode.children.add(E_prime("ID"));
         } else {
-            error("Expresión inválida. Se esperaba un número (NUM) o un identificador (ID).");
+            error("Expresión E inválida. Se esperaba NUM o ID.");
         }
         return eNode;
     }
     
-    // E' -> == Tipo | ε
-    private ASTNode E_prime(Token.Tipo expectedType) {
+    // E' (Auxiliar para E)
+    private ASTNode E_prime(String baseType) {
         if (currentToken.tipo == Token.Tipo.EQ_EQ) {
+            printProduction("E' -> == " + (baseType.equals("NUM") ? "num" : "id"));
             ASTNode primeNode = new ASTNode("Comparison");
             match(Token.Tipo.EQ_EQ);
             
-            String nodeType = (expectedType == Token.Tipo.NUM) ? "Num" : "Id";
-            primeNode.children.add(new ASTNode(nodeType, currentToken.lexema));
-            
+            Token.Tipo expectedType = baseType.equals("NUM") ? Token.Tipo.NUM : Token.Tipo.ID;
             match(expectedType);
             return primeNode;
         } else {
-            return new ASTNode("Empty");
+            printProduction("E' -> ℇ");
+            return new ASTNode("EmptyE'");
         }
     }
 }
