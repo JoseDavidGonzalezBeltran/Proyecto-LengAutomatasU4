@@ -1,7 +1,9 @@
+import java.util.Objects;
+
 public class Token {
     public enum Tipo {
         INT, FLOAT, ID, NUM, IF, THEN, ELSE, WHILE, DO, INPUT, OUTPUT, 
-        EQ_EQ, L_BRACE, FIN_BLOQUE, FINAL_DE_SENTENCIA, EOF, ERROR
+        EQ_EQ, L_BRACE, R_BRACE, SEMICOLON, EOF, ERROR
     }
     
     public final Tipo tipo;
@@ -9,8 +11,8 @@ public class Token {
     public final int linea;
 
     public Token(Tipo tipo, String lexema, int linea) {
-        this.tipo = tipo;
-        this.lexema = lexema;
+        this.tipo = Objects.requireNonNull(tipo);
+        this.lexema = Objects.requireNonNull(lexema);
         this.linea = linea;
     }
     

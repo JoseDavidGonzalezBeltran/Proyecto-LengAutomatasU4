@@ -1,26 +1,28 @@
 public class Main {
     public static void main(String[] args) {
-        String codigoFuente = 
-            "int x; float y; \n" +
-            "if 10 == 10 then \n" +
-            "  output x; \n" +
-            "else \n" +
-            "  { \n" +
-            "    while y do input y; \n" +
-            "  }"; 
-
-        // 1. Crear Scanner
-        Scanner scanner = new Scanner(codigoFuente);
         
-        // 2. Crear Parser
+        // CÓDIGO CON ERRORES INTENCIONALES PARA DEMOSTRAR LA RECUPERACIÓN Y REPORTE MÚLTIPLE
+        String codigoFuente_ConErrores = 
+            "int contador; " +
+            
+            // 2. Bloque Principal (S -> { S L)
+            "{ " +
+            
+            // 3. Sentencia S (input E) que NO consume el punto y coma
+            "  input contador " + 
+            
+            // 4. Cierre del Bloque (L -> })
+            "}";
+
+        Scanner scanner = new Scanner(codigoFuente_ConErrores);
         Parser parser = new Parser(scanner);
         
-        // 3. Analizar y obtener el AST
+        System.out.println("--- Iniciando Análisis Léxico y Sintáctico ---");
         ASTNode ast = parser.parse();
         
-        // 4. Desplegar el Árbol Sintáctico (si no hay errores)
+        // Desplegar el Árbol Sintáctico SÓLO si no hay errores (según lo solicitado)
         if (ast != null) {
-            System.out.println("\n--- ÁRBOL SINTÁCTICO (AST) ---\n");
+            System.out.println("\n--- ÁRBOL SINTÁCTICO ---");
             ast.display(0);
         }
     }

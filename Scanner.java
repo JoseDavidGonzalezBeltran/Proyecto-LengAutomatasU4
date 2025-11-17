@@ -24,7 +24,6 @@ public class Scanner {
         this.input = input;
     }
 
-    // --- Auxiliares ---
     private char peek() { return pos < input.length() ? input.charAt(pos) : '\0'; }
     private void advance() { pos++; }
     private void skipWhitespace() {
@@ -36,7 +35,6 @@ public class Scanner {
     private boolean isLetter(char c) { return Character.isLetter(c); }
     private boolean isDigit(char c) { return Character.isDigit(c); }
 
-    // --- Método principal del Scanner ---
     public Token nextToken() {
         skipWhitespace();
 
@@ -49,22 +47,21 @@ public class Scanner {
         
         // Operadores y símbolos
         switch (c) {
-            case ';': advance(); return new Token(Token.Tipo.FINAL_DE_SENTENCIA, ";", linea);
+            case ';': advance(); return new Token(Token.Tipo.SEMICOLON, ";", linea);
             case '{': advance(); return new Token(Token.Tipo.L_BRACE, "{", linea);
-            case '}': advance(); return new Token(Token.Tipo.FIN_BLOQUE, "}", linea);
+            case '}': advance(); return new Token(Token.Tipo.R_BRACE, "}", linea);
             case '=': 
                 advance();
                 if (peek() == '=') {
                     advance();
                     return new Token(Token.Tipo.EQ_EQ, "==", linea);
                 } else {
-                    // Error léxico si se encuentra solo un '=', ya que no está definido en la gramática
-                    System.err.println("Error Léxico en línea " + linea + ": Símbolo '=' no reconocido.");
+                    // Genera ERROR si encuentra '=' simple (ya que no es válido en la gramática)
                     return new Token(Token.Tipo.ERROR, "=", linea);
                 }
         }
 
-        // Identificadores y Palabras Clave (id à letra (letra | digito) +)
+        // Identificadores y Palabras Clave
         if (isLetter(c)) {
             while (pos < input.length() && (isLetter(peek()) || isDigit(peek()))) {
                 advance();
@@ -74,19 +71,18 @@ public class Scanner {
             return new Token(tipo, lexema, linea);
         }
 
-        // Números (num à digito +)
+        // Números
         if (isDigit(c)) {
             while (pos < input.length() && isDigit(peek())) {
                 advance();
             }
+            // Soporte básico para float no implementado, solo enteros (num)
             String lexema = input.substring(start, pos);
             return new Token(Token.Tipo.NUM, lexema, linea);
         }
 
         // Error léxico: Carácter no reconocido
-        System.err.println("Error Léxico en línea " + linea + ": Carácter no reconocido '" + c + "'");
         advance();
-        // **Parar compilación o retornar ERROR para manejo en el Parser**
         return new Token(Token.Tipo.ERROR, String.valueOf(c), linea); 
     }
 }
