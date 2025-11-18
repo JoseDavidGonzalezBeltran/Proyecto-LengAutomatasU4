@@ -19,9 +19,8 @@ public class ASTNode {
         this.value = value;
         this.children = new ArrayList<>();
     }
-
-    /** Este método ahora está vacío. El Árbol Sintáctico (AST) ya no se genera. */
+    
     public void display(int depth) {
-        // La implementación está vacía para eliminar la salida visual del árbol.
+
     }
 }

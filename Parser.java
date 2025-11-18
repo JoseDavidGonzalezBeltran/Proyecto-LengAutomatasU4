@@ -41,20 +41,19 @@ public class Parser {
         ASTNode root = P();
 
         if (!errors.isEmpty()) {
-            System.out.println("\n--- ANÁLISIS FINALIZADO CON ERRORES. EL ÁRBOL SINTÁCTICO NO SE MUESTRA. ---");
+            System.out.println("\n--- ANALISIS FINALIZADO CON ERRORES. EL ARBOL SINTACTICO NO SE MUESTRA. ---");
             System.out.println("TOTAL DE ERRORES SINTÁCTICOS Y LÉXICOS ENCONTRADOS: " + errors.size());
             return null; 
         } else if (currentToken.tipo.equals(Token.Tipo.EOF)) {
-            System.out.println("\n--- ÁRBOL SINTÁCTICO (Análisis de Derivación) ---");
+            System.out.println("\n--- ARBOL SINTÁCTICO ---");
             for (String line : derivationTrace) {
                 System.out.println(line);
             }
-            System.out.println("\n--- Análisis completado con éxito. ---");
+            System.out.println("\n--- Analisis completado con exito. ---");
         } 
         return root;
     }
     
-    // P -> D S <eof> [cite: 8]
     private ASTNode P() {
         printProduction("P -> D S <eof>");
         ASTNode pNode = new ASTNode("P");
@@ -64,7 +63,6 @@ public class Parser {
         return pNode;
     }
 
-    // D -> (int | float) id ; D [cite: 9] | ℇ (cadena nula) [cite: 10]
     private ASTNode D() {
         // **CASO ℇ (Cadena nula):** La producción debe elegirse si el lookahead (currentToken) 
         // es cualquiera de los tokens que inician S, que son el FIRST set de S.
@@ -76,7 +74,6 @@ public class Parser {
             return new ASTNode("EmptyD");
         }
 
-        // CASO NORMAL: D -> (int | float) id ; D
         if (currentToken.tipo == Token.Tipo.INT || currentToken.tipo == Token.Tipo.FLOAT) {
             printProduction("D -> (int | float) id ; D");
             ASTNode dNode = new ASTNode("D");
@@ -91,7 +88,7 @@ public class Parser {
             match(Token.Tipo.SEMICOLON); // Consume ;
             
             dNode.children.add(D()); // Llamada recursiva
-            return dNode;
+            return dNode;   
             
         } else {
             // ERROR CRÍTICO en D.
@@ -166,7 +163,6 @@ public class Parser {
         return sNode;
     }
 
-    // L -> } [cite: 16] | ; S L [cite: 17]
     private ASTNode L() {
         if (currentToken.tipo == Token.Tipo.R_BRACE) {
             printProduction("L -> }");
@@ -195,7 +191,7 @@ public class Parser {
         }
     }
     
-    // E -> num == num | id == id | num | id [cite: 18, 19, 20, 21]
+
     private ASTNode E() {
         ASTNode eNode = new ASTNode("E");
         
@@ -213,7 +209,6 @@ public class Parser {
         return eNode;
     }
     
-    // E' (Auxiliar para E)
     private ASTNode E_prime(String baseType) {
         if (currentToken.tipo == Token.Tipo.EQ_EQ) {
             printProduction("E' -> == " + (baseType.equals("NUM") ? "num" : "id"));
@@ -224,7 +219,6 @@ public class Parser {
             match(expectedType);
             return primeNode;
         } else {
-            printProduction("E' -> ℇ");
             return new ASTNode("EmptyE'");
         }
     }
