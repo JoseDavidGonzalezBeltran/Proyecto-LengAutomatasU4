@@ -1,0 +1,29 @@
+    Codigo Correcto        
+            
+            "int contador;\n" +
+    "float limite;\n" +
+    "{\n" +
+    "  input limite\n" + 
+    "  ; output contador\n" + // CORRECCIÓN 1: 'contador' debe ser precedido por 'output'
+    "  ; while contador == limite do \n" +
+    "    {\n" + 
+    "      output contador\n" +
+    "      ; input contador\n" + 
+    "    }\n" + 
+    "  ; if 10 == 5 then \n" +
+    "      output 1 \n" +
+    "    else \n" +
+    "      output 0\n" +
+    "}\n"
+
+Codigo incorrecto
+
+"variableA;\n" + 
+"float variableB;\n" +
+"{\n" +
+"  input variableB\n" + 
+"  ; if 10 == 5 output 1\n" + // ERROR 2: Falta la palabra clave 'then' después de E.
+"  ; else output 0\n" +
+"}\n"
+
+    

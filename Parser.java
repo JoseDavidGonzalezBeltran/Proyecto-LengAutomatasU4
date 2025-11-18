@@ -5,7 +5,6 @@ public class Parser {
     private final Scanner scanner;
     private Token currentToken;
     private final List<String> errors = new ArrayList<>(); 
-    // NUEVO: Buffer para almacenar la traza de derivación (el "árbol").
     private final List<String> derivationTrace = new ArrayList<>();
 
     public Parser(Scanner scanner) {
@@ -15,7 +14,6 @@ public class Parser {
     // --- Lógica de Derivación, Consumo y Errores ---
 
     private void error(String message) {
-        // Registra el error pero no suprime la lógica del parser para avanzar.
         String errorMessage = String.format("Error de Sintaxis en línea %d (%s): %s", 
                                             currentToken.linea, currentToken.lexema, message);
         errors.add(errorMessage); 
@@ -23,35 +21,30 @@ public class Parser {
     }
 
     private void printProduction(String rule) {
-        // Almacena la regla en el buffer en lugar de imprimirla inmediatamente.
         derivationTrace.add("--> APLICANDO REGLA: " + rule);
     }
     
     private void match(Token.Tipo expectedType) {
         if (currentToken.tipo == expectedType) {
-            // Almacena el consumo en el buffer.
             derivationTrace.add("    |-> Consumido Token Terminal: " + currentToken.lexema + " (" + expectedType + ")");
             currentToken = scanner.nextToken();
         } else {
             error("Se esperaba '" + expectedType + "' pero se encontró '" + currentToken.tipo + "'");
-            // Nota: Aquí se detiene la ejecución sin recuperación simple si hay un error
+            // No avanzamos el token en match() para que la recuperación se maneje en el método de la regla.
         }
     }
-    
+
     // --- Método de inicio y Reglas Gramaticales ---
     
     public ASTNode parse() {
         currentToken = scanner.nextToken(); 
         ASTNode root = P();
 
-        // CLAVE: Control estricto para la generación de la salida.
         if (!errors.isEmpty()) {
-            // Si hay errores, solo se muestra el reporte final, NUNCA la traza.
             System.out.println("\n--- ANÁLISIS FINALIZADO CON ERRORES. EL ÁRBOL SINTÁCTICO NO SE MUESTRA. ---");
             System.out.println("TOTAL DE ERRORES SINTÁCTICOS Y LÉXICOS ENCONTRADOS: " + errors.size());
             return null; 
         } else if (currentToken.tipo.equals(Token.Tipo.EOF)) {
-            // Si es correcto, primero se imprime el nuevo "árbol sintáctico" (la traza).
             System.out.println("\n--- ÁRBOL SINTÁCTICO (Análisis de Derivación) ---");
             for (String line : derivationTrace) {
                 System.out.println(line);
@@ -61,7 +54,7 @@ public class Parser {
         return root;
     }
     
-    // P -> D S <eof>
+    // P -> D S <eof> [cite: 8]
     private ASTNode P() {
         printProduction("P -> D S <eof>");
         ASTNode pNode = new ASTNode("P");
@@ -71,25 +64,56 @@ public class Parser {
         return pNode;
     }
 
-    // D -> (int | float) id ; D | ℇ
+    // D -> (int | float) id ; D [cite: 9] | ℇ (cadena nula) [cite: 10]
     private ASTNode D() {
-        if (currentToken.tipo == Token.Tipo.INT || currentToken.tipo == Token.Tipo.FLOAT) {
-            printProduction("D -> (int | float) id ; D");
-            ASTNode dNode = new ASTNode("D");
-            dNode.children.add(new ASTNode("Type", currentToken.lexema));
-            match(currentToken.tipo); 
-            dNode.children.add(new ASTNode("Id", currentToken.lexema));
-            match(Token.Tipo.ID); 
-            match(Token.Tipo.SEMICOLON); 
-            dNode.children.add(D()); 
-            return dNode;
-        } else {
+        // **CASO ℇ (Cadena nula):** La producción debe elegirse si el lookahead (currentToken) 
+        // es cualquiera de los tokens que inician S, que son el FIRST set de S.
+        if (currentToken.tipo == Token.Tipo.L_BRACE || currentToken.tipo == Token.Tipo.IF ||
+            currentToken.tipo == Token.Tipo.WHILE || currentToken.tipo == Token.Tipo.INPUT ||
+            currentToken.tipo == Token.Tipo.OUTPUT) 
+        {
             printProduction("D -> ℇ");
             return new ASTNode("EmptyD");
         }
+
+        // CASO NORMAL: D -> (int | float) id ; D
+        if (currentToken.tipo == Token.Tipo.INT || currentToken.tipo == Token.Tipo.FLOAT) {
+            printProduction("D -> (int | float) id ; D");
+            ASTNode dNode = new ASTNode("D");
+            
+            Token.Tipo type = currentToken.tipo;
+            dNode.children.add(new ASTNode("Type", currentToken.lexema));
+            match(type); // Consume tipo
+            
+            dNode.children.add(new ASTNode("Id", currentToken.lexema));
+            match(Token.Tipo.ID); // Consume ID
+            
+            match(Token.Tipo.SEMICOLON); // Consume ;
+            
+            dNode.children.add(D()); // Llamada recursiva
+            return dNode;
+            
+        } else {
+            // ERROR CRÍTICO en D.
+            error("Se esperaba 'int' o 'float' para declarar, o el inicio de una sentencia (IF, WHILE, INPUT, OUTPUT, {).");
+            
+            // Recuperación de errores: Saltamos hasta encontrar un token de sincronización de D o S.
+            while (currentToken.tipo != Token.Tipo.EOF && 
+                   currentToken.tipo != Token.Tipo.L_BRACE && 
+                   currentToken.tipo != Token.Tipo.INT && 
+                   currentToken.tipo != Token.Tipo.FLOAT &&
+                   currentToken.tipo != Token.Tipo.IF &&
+                   currentToken.tipo != Token.Tipo.WHILE &&
+                   currentToken.tipo != Token.Tipo.INPUT &&
+                   currentToken.tipo != Token.Tipo.OUTPUT) 
+            {
+                currentToken = scanner.nextToken();
+            }
+
+            return D();
+        }
     }
 
-    // S -> if E then S else S | while E do S | { S L | input E | output E
     private ASTNode S() {
         ASTNode sNode = new ASTNode("S");
         switch (currentToken.tipo) {
@@ -97,7 +121,15 @@ public class Parser {
                 printProduction("S -> if E then S else S");
                 match(Token.Tipo.IF);
                 sNode.children.add(E()); 
-                match(Token.Tipo.THEN);
+                
+                // Recuperación de errores: Si 'then' falta.
+                if (currentToken.tipo != Token.Tipo.THEN) {
+                     error("Se esperaba 'then' después de la expresión condicional (E).");
+                     // Simulamos que 'then' fue consumido para continuar con la estructura.
+                } else {
+                    match(Token.Tipo.THEN);
+                }
+                
                 sNode.children.add(S()); 
                 match(Token.Tipo.ELSE);
                 sNode.children.add(S()); 
@@ -126,13 +158,15 @@ public class Parser {
                 sNode.children.add(E()); 
                 break;
             default:
+                // Error: Sentencia S inválida.
                 error("Sentencia S inválida. Se esperaba IF, WHILE, '{', INPUT, u OUTPUT.");
+                // Retornamos un nodo de error, dejando que el llamador (P o L) maneje la recuperación.
                 return new ASTNode("ErrorS");
         }
         return sNode;
     }
 
-    // L -> } | ; S L
+    // L -> } [cite: 16] | ; S L [cite: 17]
     private ASTNode L() {
         if (currentToken.tipo == Token.Tipo.R_BRACE) {
             printProduction("L -> }");
@@ -147,11 +181,21 @@ public class Parser {
             return lNode;
         } else {
              error("Se esperaba ; o } en la lista L. Encontrado: " + currentToken.tipo);
+             // Recuperación de errores: Saltamos hasta el siguiente ; o } para intentar recuperar el bloque.
+             while (currentToken.tipo != Token.Tipo.EOF && 
+                    currentToken.tipo != Token.Tipo.SEMICOLON && 
+                    currentToken.tipo != Token.Tipo.R_BRACE) 
+             {
+                 currentToken = scanner.nextToken();
+             }
+             if (currentToken.tipo == Token.Tipo.SEMICOLON || currentToken.tipo == Token.Tipo.R_BRACE) {
+                 return L();
+             }
              return new ASTNode("ErrorL");
         }
     }
     
-    // E -> num == num | id == id | num | id
+    // E -> num == num | id == id | num | id [cite: 18, 19, 20, 21]
     private ASTNode E() {
         ASTNode eNode = new ASTNode("E");
         
@@ -163,6 +207,8 @@ public class Parser {
             eNode.children.add(E_prime("ID"));
         } else {
             error("Expresión E inválida. Se esperaba NUM o ID.");
+            // Avanzamos el token, ya que el error será capturado por S o L.
+            currentToken = scanner.nextToken(); 
         }
         return eNode;
     }

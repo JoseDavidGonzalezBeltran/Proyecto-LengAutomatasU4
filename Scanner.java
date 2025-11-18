@@ -71,7 +71,7 @@ public class Scanner {
             return new Token(tipo, lexema, linea);
         }
 
-        // Números
+        // Numeros
         if (isDigit(c)) {
             while (pos < input.length() && isDigit(peek())) {
                 advance();
