@@ -47,9 +47,9 @@ public class Scanner {
         
         // Operadores y símbolos
         switch (c) {
-            case ';': advance(); return new Token(Token.Tipo.SEMICOLON, ";", linea);
-            case '{': advance(); return new Token(Token.Tipo.L_BRACE, "{", linea);
-            case '}': advance(); return new Token(Token.Tipo.R_BRACE, "}", linea);
+            case ';': advance(); return new Token(Token.Tipo.PUNTO_COMA, ";", linea);
+            case '{': advance(); return new Token(Token.Tipo.LLAVE_IZQ, "{", linea);
+            case '}': advance(); return new Token(Token.Tipo.LLAVE_DER, "}", linea);
             case '=': 
                 advance();
                 if (peek() == '=') {

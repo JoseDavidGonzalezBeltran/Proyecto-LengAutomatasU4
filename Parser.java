@@ -66,7 +66,7 @@ public class Parser {
     private ASTNode D() {
         // **CASO ℇ (Cadena nula):** La producción debe elegirse si el lookahead (currentToken) 
         // es cualquiera de los tokens que inician S, que son el FIRST set de S.
-        if (currentToken.tipo == Token.Tipo.L_BRACE || currentToken.tipo == Token.Tipo.IF ||
+        if (currentToken.tipo == Token.Tipo.LLAVE_IZQ || currentToken.tipo == Token.Tipo.IF ||
             currentToken.tipo == Token.Tipo.WHILE || currentToken.tipo == Token.Tipo.INPUT ||
             currentToken.tipo == Token.Tipo.OUTPUT) 
         {
@@ -85,7 +85,7 @@ public class Parser {
             dNode.children.add(new ASTNode("Id", currentToken.lexema));
             match(Token.Tipo.ID); // Consume ID
             
-            match(Token.Tipo.SEMICOLON); // Consume ;
+            match(Token.Tipo.PUNTO_COMA); // Consume ;
             
             dNode.children.add(D()); // Llamada recursiva
             return dNode;   
@@ -96,7 +96,7 @@ public class Parser {
             
             // Recuperación de errores: Saltamos hasta encontrar un token de sincronización de D o S.
             while (currentToken.tipo != Token.Tipo.EOF && 
-                   currentToken.tipo != Token.Tipo.L_BRACE && 
+                   currentToken.tipo != Token.Tipo.LLAVE_IZQ && 
                    currentToken.tipo != Token.Tipo.INT && 
                    currentToken.tipo != Token.Tipo.FLOAT &&
                    currentToken.tipo != Token.Tipo.IF &&
@@ -138,9 +138,9 @@ public class Parser {
                 match(Token.Tipo.DO);
                 sNode.children.add(S()); 
                 break;
-            case L_BRACE:
+            case LLAVE_IZQ:
                 printProduction("S -> { S L");
-                match(Token.Tipo.L_BRACE);
+                match(Token.Tipo.LLAVE_IZQ);
                 sNode.children.add(S()); 
                 sNode.children.add(L()); 
                 break;
@@ -164,14 +164,14 @@ public class Parser {
     }
 
     private ASTNode L() {
-        if (currentToken.tipo == Token.Tipo.R_BRACE) {
+        if (currentToken.tipo == Token.Tipo.LLAVE_DER) {
             printProduction("L -> }");
-            match(Token.Tipo.R_BRACE);
+            match(Token.Tipo.LLAVE_DER);
             return new ASTNode("EndL");
-        } else if (currentToken.tipo == Token.Tipo.SEMICOLON) {
+        } else if (currentToken.tipo == Token.Tipo.PUNTO_COMA) {
             printProduction("L -> ; S L");
             ASTNode lNode = new ASTNode("L");
-            match(Token.Tipo.SEMICOLON);
+            match(Token.Tipo.PUNTO_COMA);
             lNode.children.add(S());
             lNode.children.add(L());
             return lNode;
@@ -179,12 +179,12 @@ public class Parser {
              error("Se esperaba ; o } en la lista L. Encontrado: " + currentToken.tipo);
              // Recuperación de errores: Saltamos hasta el siguiente ; o } para intentar recuperar el bloque.
              while (currentToken.tipo != Token.Tipo.EOF && 
-                    currentToken.tipo != Token.Tipo.SEMICOLON && 
-                    currentToken.tipo != Token.Tipo.R_BRACE) 
+                    currentToken.tipo != Token.Tipo.PUNTO_COMA && 
+                    currentToken.tipo != Token.Tipo.LLAVE_DER) 
              {
                  currentToken = scanner.nextToken();
              }
-             if (currentToken.tipo == Token.Tipo.SEMICOLON || currentToken.tipo == Token.Tipo.R_BRACE) {
+             if (currentToken.tipo == Token.Tipo.PUNTO_COMA || currentToken.tipo == Token.Tipo.LLAVE_DER) {
                  return L();
              }
              return new ASTNode("ErrorL");

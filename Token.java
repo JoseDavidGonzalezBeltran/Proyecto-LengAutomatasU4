@@ -3,7 +3,7 @@ import java.util.Objects;
 public class Token {
     public enum Tipo {
         INT, FLOAT, ID, NUM, IF, THEN, ELSE, WHILE, DO, INPUT, OUTPUT, 
-        EQ_EQ, L_BRACE, R_BRACE, SEMICOLON, EOF, ERROR
+        EQ_EQ, LLAVE_IZQ, LLAVE_DER, PUNTO_COMA, EOF, ERROR
     }
     
     public final Tipo tipo;
