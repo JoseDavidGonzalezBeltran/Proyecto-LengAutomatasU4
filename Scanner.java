@@ -23,20 +23,22 @@ public class Scanner {
     public Scanner(String input) {
         this.input = input;
     }
-
+    //funcion de navegacion 
     private char peek() { return pos < input.length() ? input.charAt(pos) : '\0'; }
     private void advance() { pos++; }
+    //funcion para ignorar espacios y aumentar N lineas 
     private void skipWhitespace() {
         while (pos < input.length() && (Character.isWhitespace(peek()))) {
-            if (peek() == '\n') linea++;
+            if (peek() == '\n') 
+            linea++;
             advance();
         }
     }
     private boolean isLetter(char c) { return Character.isLetter(c); }
     private boolean isDigit(char c) { return Character.isDigit(c); }
-
+    //funcion principal
     public Token nextToken() {
-        skipWhitespace();
+        skipWhitespace(); 
 
         if (pos >= input.length()) {
             return new Token(Token.Tipo.EOF, "EOF", linea);
@@ -45,7 +47,7 @@ public class Scanner {
         int start = pos;
         char c = peek();
         
-        // Operadores y símbolos
+        //operadores y simbolos
         switch (c) {
             case ';': advance(); return new Token(Token.Tipo.PUNTO_COMA, ";", linea);
             case '{': advance(); return new Token(Token.Tipo.LLAVE_IZQ, "{", linea);
@@ -56,16 +58,17 @@ public class Scanner {
                     advance();
                     return new Token(Token.Tipo.EQ_EQ, "==", linea);
                 } else {
-                    // Genera ERROR si encuentra '=' simple (ya que no es válido en la gramática)
+                    //genera ERROR si encuentra '=' simple (ya que no es valido en la gramatica)
                     return new Token(Token.Tipo.ERROR, "=", linea);
                 }
         }
 
-        // Identificadores y Palabras Clave
+        //identificadores y palabras clave
         if (isLetter(c)) {
             while (pos < input.length() && (isLetter(peek()) || isDigit(peek()))) {
                 advance();
             }
+            //identifica si es palabra clave, sino lo es lo toma con ID
             String lexema = input.substring(start, pos);
             Token.Tipo tipo = PALABRAS_CLAVE.getOrDefault(lexema, Token.Tipo.ID);
             return new Token(tipo, lexema, linea);
@@ -76,12 +79,12 @@ public class Scanner {
             while (pos < input.length() && isDigit(peek())) {
                 advance();
             }
-            // Soporte básico para float no implementado, solo enteros (num)
+            //solo toma numeros enteros 
             String lexema = input.substring(start, pos);
             return new Token(Token.Tipo.NUM, lexema, linea);
         }
 
-        // Error léxico: Carácter no reconocido
+        //error lexico: Caracter no reconocido
         advance();
         return new Token(Token.Tipo.ERROR, String.valueOf(c), linea); 
     }

@@ -19,7 +19,7 @@
 Codigo incorrecto
 
 "variableA;\n" + 
-"float variableB;\n" +
+"float a1;\n" +
 "{\n" +
 "  input variableB\n" + 
 "  ; if 10 == 5 output 1\n" + // ERROR 2: Falta la palabra clave 'then' después de E.
@@ -28,8 +28,8 @@ Codigo incorrecto
 
 Codigo incorrecto
 
-            "int a\n" + 
-            "float b;\n" +
+            "int a1\n" + 
+            "float b2;\n" +
             "\n" +
             "{\n" +
             "  input int\n" + 

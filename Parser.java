@@ -11,31 +11,31 @@ public class Parser {
         this.scanner = scanner;
     }
     
-    // --- Lógica de Derivación, Consumo y Errores ---
+    //
 
     private void error(String message) {
+        //registrador de erroes
         String errorMessage = String.format("Error de Sintaxis en línea %d (%s): %s", 
                                             currentToken.linea, currentToken.lexema, message);
         errors.add(errorMessage); 
         System.err.println(errorMessage);
     }
-
+    //mostrar regla gramarical en uso 
     private void printProduction(String rule) {
         derivationTrace.add("--> APLICANDO REGLA: " + rule);
     }
-    
+
     private void match(Token.Tipo expectedType) {
         if (currentToken.tipo == expectedType) {
-            derivationTrace.add("    |-> Consumido Token Terminal: " + currentToken.lexema + " (" + expectedType + ")");
+            derivationTrace.add("    |-> Token Consumido : " + currentToken.lexema + " (" + expectedType + ")");
             currentToken = scanner.nextToken();
         } else {
             error("Se esperaba '" + expectedType + "' pero se encontró '" + currentToken.tipo + "'");
-            // No avanzamos el token en match() para que la recuperación se maneje en el método de la regla.
+            //no avanza el token en match() para que la recuperacion se 
+            // maneje en el metodo de la regla
         }
     }
 
-    // --- Método de inicio y Reglas Gramaticales ---
-    
     public ASTNode parse() {
         currentToken = scanner.nextToken(); 
         ASTNode root = P();
@@ -64,8 +64,6 @@ public class Parser {
     }
 
     private ASTNode D() {
-        // **CASO ℇ (Cadena nula):** La producción debe elegirse si el lookahead (currentToken) 
-        // es cualquiera de los tokens que inician S, que son el FIRST set de S.
         if (currentToken.tipo == Token.Tipo.LLAVE_IZQ || currentToken.tipo == Token.Tipo.IF ||
             currentToken.tipo == Token.Tipo.WHILE || currentToken.tipo == Token.Tipo.INPUT ||
             currentToken.tipo == Token.Tipo.OUTPUT) 
@@ -77,24 +75,24 @@ public class Parser {
         if (currentToken.tipo == Token.Tipo.INT || currentToken.tipo == Token.Tipo.FLOAT) {
             printProduction("D -> (int | float) id ; D");
             ASTNode dNode = new ASTNode("D");
-            
+            //caso de declaracion normal
             Token.Tipo type = currentToken.tipo;
             dNode.children.add(new ASTNode("Type", currentToken.lexema));
-            match(type); // Consume tipo
+            match(type); //consume tipo
             
             dNode.children.add(new ASTNode("Id", currentToken.lexema));
             match(Token.Tipo.ID); // Consume ID
             
-            match(Token.Tipo.PUNTO_COMA); // Consume ;
+            match(Token.Tipo.PUNTO_COMA); //consume ;
             
-            dNode.children.add(D()); // Llamada recursiva
-            return dNode;   
+            dNode.children.add(D()); //llamada recursiva
+            return dNode; 
             
         } else {
-            // ERROR CRÍTICO en D.
+            // ERROR CRiTICO en D.
             error("Se esperaba 'int' o 'float' para declarar, o el inicio de una sentencia (IF, WHILE, INPUT, OUTPUT, {).");
             
-            // Recuperación de errores: Saltamos hasta encontrar un token de sincronización de D o S.
+            //recuperacion de errores: Saltamos hasta encontrar un token de sincronización de D o S.
             while (currentToken.tipo != Token.Tipo.EOF && 
                    currentToken.tipo != Token.Tipo.LLAVE_IZQ && 
                    currentToken.tipo != Token.Tipo.INT && 
@@ -122,7 +120,7 @@ public class Parser {
                 // Recuperación de errores: Si 'then' falta.
                 if (currentToken.tipo != Token.Tipo.THEN) {
                      error("Se esperaba 'then' después de la expresión condicional (E).");
-                     // Simulamos que 'then' fue consumido para continuar con la estructura.
+                     //simulamos que 'then' fue consumido para continuar con la estructura
                 } else {
                     match(Token.Tipo.THEN);
                 }
@@ -155,9 +153,9 @@ public class Parser {
                 sNode.children.add(E()); 
                 break;
             default:
-                // Error: Sentencia S inválida.
+                //error:sentencia S inválida.
                 error("Sentencia S inválida. Se esperaba IF, WHILE, '{', INPUT, u OUTPUT.");
-                // Retornamos un nodo de error, dejando que el llamador (P o L) maneje la recuperación.
+                //retorna un nodo de error, dejando que el llamador (P o L) maneje la recuperación.
                 return new ASTNode("ErrorS");
         }
         return sNode;
