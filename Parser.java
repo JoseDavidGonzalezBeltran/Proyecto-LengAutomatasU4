@@ -174,8 +174,9 @@ public class Parser {
             lNode.children.add(L());
             return lNode;
         } else {
+        //logica de recuperacion de errores hasta encontrar ; o }
              error("Se esperaba ; o } en la lista L. Encontrado: " + currentToken.tipo);
-             // Recuperación de errores: Saltamos hasta el siguiente ; o } para intentar recuperar el bloque.
+             //recuperacion de errores: salta hasta el siguiente ; o } para intentar recuperar el bloque
              while (currentToken.tipo != Token.Tipo.EOF && 
                     currentToken.tipo != Token.Tipo.PUNTO_COMA && 
                     currentToken.tipo != Token.Tipo.LLAVE_DER) 
@@ -200,8 +201,8 @@ public class Parser {
             match(Token.Tipo.ID);
             eNode.children.add(E_prime("ID"));
         } else {
-            error("Expresión E inválida. Se esperaba NUM o ID.");
-            // Avanzamos el token, ya que el error será capturado por S o L.
+            error("Expresión E invalida. Se esperaba NUM o ID.");
+            //avanzamos el token, ya que el error sera capturado por S o L.
             currentToken = scanner.nextToken(); 
         }
         return eNode;
@@ -209,7 +210,7 @@ public class Parser {
     
     private ASTNode E_prime(String baseType) {
         if (currentToken.tipo == Token.Tipo.EQ_EQ) {
-            printProduction("E' -> == " + (baseType.equals("NUM") ? "num" : "id"));
+            printProduction("E -> == " + (baseType.equals("NUM") ? "num" : "id"));
             ASTNode primeNode = new ASTNode("Comparison");
             match(Token.Tipo.EQ_EQ);
             
